@@ -2,8 +2,14 @@
 """ parsing Tem and Pattern objects"""
 
 import random
+import sys
+
+sys.path.insert(0, '/Users/rachaelkim/Desktop/Pisan_AI project/rip-1/jtms')
+from jtms import *
+
 
 VARIABLE_CHAR = '#'
+VARIABLE_CHAR2 = '?'
 
 # A term is a symbol or a list of symbols
 # x, [x, y [w, a]]
@@ -15,7 +21,7 @@ class Term():
     def __str__(self):
         if len(self.data) == 0:
             return "T<" + self.data[0] + ">"
-        return "T<" + list2str(self.data) + ">"
+        return "T<" + list2sentence(self.data) + ">"
 
     def get(self, i):
         return self.data[i]
@@ -40,6 +46,22 @@ def list2str(alist):
     out += ")"
     return out
 
+# convert [a, b] to ( a is b )
+def list2sentence(alist):
+    if not isinstance(alist, list):
+        return str(alist)
+    #out = "("
+    out = ""
+    if len(alist) > 0:
+        out += list2sentence(alist[0])
+    for i in range(1, len(alist)):
+        if i == 1 :
+            out += " is"
+        out += " "
+        out += list2sentence(alist[i])
+    #out += ")"
+    return out
+
 
 class Pattern(Term):
     def __init__(self, astr):
@@ -47,6 +69,8 @@ class Pattern(Term):
 
     def match(self, other):
         bindings = {}
+        if (isinstance(other, TMS_Node)):
+            return match_pat(self.data, other.datum, bindings)
         return match_pat(self.data, other.data, bindings)
 
 
@@ -60,7 +84,7 @@ def get_complex_var(lst):
 def get_complex_func(lst):
     return lst[2]
 
-def make_callable_str(func, param)
+def make_callable_str(func, param):
     return func + "(" + "'" + param + "'" + ")"
 
 # changing optional variable from bin to bindings
@@ -99,7 +123,8 @@ def match_pat(pat1, term1, bindings):
         if not isvariable(pat1):
             return pat1 == term1, bindings
         v1 = lookup(pat1, bindings)
-        if v1 == term1 or (v1 is None and addbinding(pat1, term1, bindings)):
+        bindings[pat1] = term1
+        if v1 == term1 or (v1 is not None) :  #and not addbinding(pat1, term1, bindings)):
             return True, bindings
         return False, {}
     # one is list and the other is not
@@ -107,8 +132,7 @@ def match_pat(pat1, term1, bindings):
 
 
 def addbinding(var, val, mybindings):
-    assert isvariable(var) and \
-        not isvariable(val) and mybindings.get(var) is None
+    assert isvariable(var) and not isvariable(val) 
     # print("Adding binding %s ==> %s" % (var, val))
     mybindings[var] = val
     return val
@@ -116,8 +140,10 @@ def addbinding(var, val, mybindings):
 
 def lookup(var, mybindings):
     assert isvariable(var)
-    val = mybindings.get(var)
+    val = var[1:]
+
     return val
+
 
 # x ==> x AND set isSymbol true
 # (x) ==> [x]
@@ -174,7 +200,7 @@ def parse_tuple(astr):
     while current < finish:
         ach = astr[current]
         # TODO: simplify
-        if ach.isalpha() or ach == VARIABLE_CHAR or ach in "0123456789.-+":
+        if ach.isalpha() or ach == VARIABLE_CHAR or ach in "0123456789.-+?":
             current += 1
             continue
         if ach == ')' or ach == ' ':
@@ -208,7 +234,7 @@ def parse_string(astr):
 
 
 def isidorvar(ch):
-    return ch == VARIABLE_CHAR or isidentifier(ch)
+    return ch == VARIABLE_CHAR or isidentifier(ch) or ch == VARIABLE_CHAR2
 
 
 def isidentifier(ch):
@@ -216,10 +242,18 @@ def isidentifier(ch):
 
 
 def isvariable(astr):
-    return len(astr) > 1 and astr[0] == VARIABLE_CHAR
+    return len(astr) > 1 and astr[0] == VARIABLE_CHAR or VARIABLE_CHAR2
+
+def test2():
+    t1 = Term ("(rule (Graduate-Student ?x) (assert (and (Underpaid ?x) (Overworked ?x)))) ")
+    print(t1)
+    p1 = Pattern("Graduate-Student Robbie")
+    print(str(p1.match(t1)))
+
 
 
 def run_tests():
+    """
     for s in ["xabc", "(x a b)", "  (  ) ", "(a b c)", "(x (y z))",
               "(q (w e) r    s t    (    y  uwx)   )    ", "(a (  ))", "(a (23 b))"]:
         print("\t%s ==> %s" % (s, parse(s)))
@@ -228,6 +262,7 @@ def run_tests():
     print("t1 matches itself: %s" % str(t1.match(t1)))
     print("t1 matches t2: %s" % str(t1.match(t2)))
     assert t1.match(t1)[0] and t1.match(t2)[0]
+    """
 
     t3 = Term("abc")
     p3 = Pattern("?xyz")
@@ -235,6 +270,7 @@ def run_tests():
     print("t3 NOT matches p3: %s" % str(t3.match(p3)))
     assert p3.match(t3)[0] and not t3.match(p3)[0]
 
+"""
     p1 = Pattern("(?x (23 ?y))")
     print("p1 matches t1: %s" % str(p1.match(t1)))
     print("t1 NOT matches p1: %s" % str(t1.match(p1)))
@@ -243,7 +279,7 @@ def run_tests():
     p2 = Pattern("(?x ?z)")
     print("p2 matches t1: %s" % str(p2.match(t1)))
     assert p2.match(t1)[0]
-
+"""
 
 # d is not like a local variable being set to {}
 # it is a global dict whose value gets modified
@@ -264,5 +300,5 @@ def bug():
 
 
 if __name__ == "__main__":
-    # run_tests()
-    bug()
+    run_tests()
+    
