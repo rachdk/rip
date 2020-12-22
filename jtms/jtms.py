@@ -2,9 +2,14 @@
 """ JTMS - Justification Based Truth Maintenance System """
 
 # pylint: disable=no-member
-
 from enum import Enum
+import match
+import re
 import sys
+sys.path.insert(0, '/Users/rachaelkim/Desktop/Pisan_AI project/rip-1/cps')
+
+from term import *
+
 
 
 class Support(Enum):
@@ -34,6 +39,9 @@ class JTMS():
     def make_node(self, datum, isAssumption=False, isContradictory=False):
         n = TMS_Node(datum, isAssumption=isAssumption,
                      isContradictory=isContradictory)
+        print("DEBUG")
+        print( n.datum)
+        print("END")
         n.jtms = self
         self.nodes.append(n)
         if isAssumption:
@@ -43,9 +51,17 @@ class JTMS():
         return n
 
     def get_node(self, datum):
+        print("DEBUG : get_node called - finding ", datum)
         for n in self.nodes:
-            if n.datum == datum:
-                return n
+            if self.debugging:
+                print("nodes value: ",n.datum)
+            for x in n.datum :
+                print("DEBUG " , x)
+                if x == [datum] :
+                    print("Found")
+                    return n
+            #if n.datum == datum:
+            #    return n
         return None
 
     def find_alternative_support(self, out_queue):
@@ -138,7 +154,7 @@ class JTMS():
 class TMS_Node():
     def __init__(self, datum, isAssumption=False, isContradictory=False):
         self.index = 0
-        self.datum = datum
+        self.datum = parse(datum)
         self.label = Belief.OUT
         self.support = None
         self.justs = []
@@ -275,7 +291,7 @@ class TMS_Node():
             reason = Support.Enabled_Assumption
             self.setIN(reason)
             self.propagate_inness()
-        elif not self.support.antecedents:
+        elif self.support.antecedents: #not?
             if self.jtms.debugging:
                 print("Already supported assumption: %s" % self)
         else:
@@ -328,10 +344,26 @@ class Justification():
     def check_justification(self):
         return self.consequence.isOUT() and all(n.isIN() for n in self.antecedents)
 
+class NewAssumption():
+    def __init__(self, datum):
+        self.datum = datum
 # A^B ==> F
 # B^C ==> E
 # A^E ==> G
 # D^E ==> G
+
+
+"""
+Objects:
+    JTMS
+    Node <- Assumption?
+
+Things to study :
+    isIn() ?
+    isOut() ?
+    why_node
+    make_node
+"""
 
 
 def test1():
@@ -345,13 +377,13 @@ def test1():
     j.get_node('g').justify('j4', [j.get_node('d'), j.get_node('e')])
     j.get_node('a').enable_assumption()
     j.get_node('b').enable_assumption()
+    j.get_node('f').enable_assumption()
     assert j.get_node('f').isIN()
     j.get_node('c').enable_assumption()
     assert j.get_node('e').isIN()
     assert j.get_node('g').isIN()
     j.why_nodes()
     return j
-
 
 def test2():
     j = test1()
@@ -363,6 +395,77 @@ def test3():
     j = test1()
     j.explore_network('e')
 
+def rule1(j):
+    print("Rule1 has executed")
+    # [Graduate-Student ?x]
+    pat = Pattern('((Graduate-Student)(?x))')
+    newTerm = Term('((Graduate-Student)(Robbie))')
+    j.make_node('((Graduate-Student)(Robbie))', isAssumption=True)
+    j.make_node('((Graduate-Student)((underpaid)(overworked))', isAssumption=True)
+    j.make_node('(a)', isAssumption=True)
+    testNode = j.get_node('Graduate-Student')
+    print("DEBUG : get_node result - ", testNode)
+    print(newTerm)
+    count = 0
+    print("Pattern : ", pat)
+    for node in j.nodes:
+        print("[", count, "] ", node.datum)
+        count += 1
+        bindings = pat.match( node )
+        print("Bindings %s" % bindings[0])
+    # bindings = match(pat, dat)
+    # assert lookup('x', bindings) == 'b's
+    return True
+
+def rule2(j):
+    print("Rule2 has executed")
+    return True
+
+def testRule():
+    j = JTMS("Hello")
+    j.debugging = True
+    '''
+    for ch in "abcdefg":
+        j.make_node(ch, isAssumption=True)
+    j.get_node('f').justify('j1', [j.get_node('a'), j.get_node('b')])
+    j.get_node('e').justify('j2', [j.get_node('b'), j.get_node('c')])
+    j.get_node('g').justify('j3', [j.get_node('a'), j.get_node('e')])
+    j.get_node('g').justify('j4', [j.get_node('d'), j.get_node('e')])
+    j.get_node('a').enable_assumption()
+    j.get_node('b').enable_assumption()
+    assert j.get_node('f').isIN()
+    j.get_node('c').enable_assumption()
+    assert j.get_node('e').isIN()
+    assert j.get_node('g').isIN()
+    # j.why_nodes()
+    '''
+    rules = ["rule1", "rule2"]
+    for ruleName in rules:
+        globals()[ruleName](j)
+    return j
+
+def mockTest():
+    escape = False
+    try:
+        assert escape
+    except AssertionError:
+        print("ASSERTION ERROR")
+    count = 0
+    while escape != True :
+        print(escape)
+        count += 1
+        if count == 5:
+            escape = True
+        username = input("Enter Username: ")
+        if username == "exit":
+            escape = True
 
 if __name__ == "__main__":
-    test1()
+    #test1()
+    #print (" DEBUG : end of test ")
+    #test2()
+    #print (" DEBUG : end of test ")
+    #test2()
+    #print (" DEBUG : end of test ")
+    testRule()
+    #mockTest()
